@@ -10,17 +10,11 @@ class linkedin
 {
 	public function __construct()
 	{
-		$this->_objLog = new logs('linkedin_'.date("Y_m_d_H").'.txt');
-		
-		$this->_objLog->writeLog(__LINE__, __FILE__, '', '');
-		
 		$this->_apikey = LINKEDIN_APPID;
 		$this->_secretkey = LINKEDIN_SECRET_KEY;
 		$this->_baseurl = LINKEDIN_REDIRECT_URL;
 		
 		$this->_state = session_id();
-		
-		$this->_objLog->writeLog(__LINE__, __FILE__, 'Setting Class Init Value', 'Class Init');
 	}
 	
 	public function setAuthorizeCode($code)
@@ -39,10 +33,9 @@ class linkedin
 		$arrData['redirect_uri']  = $this->_baseurl;
 	
 		$URL = LINKEDIN_API_URL."authorization?".http_build_query($arrData);
-		
-		$this->_objLog->writeLog(__LINE__, __FILE__, $URL, 'AuthenticatUser URL');
-		
-		return $URL;
+
+		header("Location:".$URL);
+		exit();
 	}
 	
 	
@@ -58,11 +51,7 @@ class linkedin
 			
 		$URL = LINKEDIN_API_URL."accessToken?".http_build_query($arrData);
 		
-		$this->_objLog->writeLog(__LINE__, __FILE__, $URL, 'getAuthorizationCode URL');
-				
 		$result = $this->curl($URL);
-		
-		$this->_objLog->writeLog(__LINE__, __FILE__, $result, 'getAuthorizationCode Curl Response');
 		
 		$arrResult = json_decode($result);
 
@@ -70,7 +59,6 @@ class linkedin
 		{
 			$this->_access_token = $arrResult->access_token;
 			
-			$this->_objLog->writeLog(__LINE__, __FILE__, $arrResult->access_token, 'getAuthorizationCode Access Token Found');
 			$this->getUserDetails($arrResult->access_token);
 		}
 	}
@@ -83,11 +71,7 @@ class linkedin
 			
 		$URL = LINKEDIN_USER_URL."~?".http_build_query($arrData);
 		
-		$this->_objLog->writeLog(__LINE__, __FILE__, $URL, 'getUserDetails');
-					
 		$result = $this->curl($URL);
-		
-		$this->_objLog->writeLog(__LINE__, __FILE__, $result, 'getUserDetails Curl Response');
 		
 		$this->extractUserDetails($result);
 	}
@@ -119,15 +103,12 @@ class linkedin
 	{
 	    $params = array('oauth2_access_token' => $this->_access_token, 'format' => 'json',);
      
-	 	//~:(firstName,lastName)
 		$url = LINKEDIN_USER_URL . $resource . '?' . http_build_query($params);
-		// Tell streams to make a (GET, POST, PUT, or DELETE) request
+
 		$context = stream_context_create(array('http' =>  array('method' => $method)));
 	 
-		// Hocus Pocus
 		$response = file_get_contents($url, false, $context);
 	 
-		// Native PHP object, please
 	    return json_decode($response);
 	}
 	
@@ -158,8 +139,12 @@ class linkedin
 /******************************************************************************/
 
 $objLinkedIn = new linkedin();
-					
-if($_REQUEST['code'] != '')
+
+if($_REQUEST['code'] == '')
+{
+	$objLinkedIn->AuthenticatUser();
+}
+else
 {
 	$objLinkedIn->setAuthorizeCode($_REQUEST['code']);
 	$objLinkedIn->getAuthorizationCode();
